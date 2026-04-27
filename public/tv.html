@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Advertising Display</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-color: #ffcc00;
+            --text-white: #ffffff;
+            --overlay-bg: rgba(0, 0, 0, 0.6);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            font-family: 'Kanit', sans-serif;
+            overflow: hidden;
+            color: var(--text-white);
+        }
+
+/* เอฟเฟกต์ Glassmorphism ให้ดูทันสมัย */
+#qr-side-card .bg-white\/90 {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+#qr-side-card {
+    position: fixed;
+    right: 2.5rem; /* ระยะห่างจากขอบขวา (ประมาณ 40px) */
+    top: 50%;      /* อยู่กึ่งกลางความสูงจอ */
+    transform: translateY(-50%); /* ดึงตัวมันเองขึ้นไปครึ่งหนึ่งเพื่อให้กลางเป๊ะ */
+    z-index: 20; /* ให้อยู่บนสุดเสมอ */
+}
+
+        /* รูปพื้นหลังที่สลับไปมา */
+        #bg-image-default {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            object-fit: cover;
+            z-index: -1;
+            transition: opacity 1.5s ease-in-out;
+            filter: brightness(0.5);
+        }
+
+        /* รูปโฆษณาหลัก */
+        #ad-image {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            object-fit: contain;
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        /* แถบข้อมูล */
+        .info-bar {
+            position: absolute;
+            bottom: 40px; left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            background: var(--overlay-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px 40px;
+            border-radius: 25px;
+            display: flex !important; /* บังคับแสดงผลตลอดเวลา */
+            opacity: 1 !important;    /* บังคับไม่ให้จางหาย */
+            justify-content: space-between;
+            align-items: center;
+            z-index: 40;
+            transition: all 0.5s ease; /* เพิ่มความนุ่มนวลเวลาเปลี่ยนข้อความ */
+        }
+        .timer-section {
+            transition: opacity 0.5s ease;
+        }
+        #ad-message { font-size: 2.5rem; margin: 0; }
+        #time-left { font-size: 3.5rem; font-weight: bold; color: var(--primary-color); }
+
+        #next-queue-bar {
+            position: absolute;
+            top: 20px; left: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            z-index: 40;
+        }
+    </style>
+</head>
+<body>
+
+    <img id="bg-image-default" src="" alt="Background">
+    <div id="next-queue-bar">คิวถัดไป: <span id="next-msg">ว่าง</span></div>
+    <img id="ad-image" src="" alt="Advertising">
+
+<div id="qr-side-card" class="fixed right-10 top-1/2 -translate-y-1/2 z-20 transition-all duration-500">
+    <div class="bg-white/90 backdrop-blur-sm p-5 rounded-3xl shadow-2xl border border-white/50 text-center flex flex-col items-center">
+        
+        <p class="text-gray-800 font-bold mb-3 text-lg leading-tight">
+            สแกนส่งรูป<br><span class="text-blue-600 text-sm">ขึ้นจอนี้!</span>
+        </p>
+
+        <div class="bg-white p-2 rounded-2xl shadow-inner">
+            <img id="qr-main" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://tv-evji.onrender.com/" 
+                 alt="QR Code" class="w-40 h-40 md:w-48 md:h-48">
+        </div>
+
+        <div class="mt-4 bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-medium animate-bounce">
+            Scan Me
+        </div>
+    </div>
+</div>
+
+<div class="info-bar" id="info-overlay">
+    <div class="message-section">
+        <p id="ad-message"> </p>   
+    </div>
+            
+    <div class="timer-section" id="timer-container" style="text-align:right; opacity: 0;">
+        <div style="font-size: 1rem; color: #aaa;">เหลือเวลา</div>
+        <span id="time-left">00:00</span>
+    </div>
+</div>
+
+<script>
+    // 1. ตั้งค่า Supabase
+    const SB_URL = 'https://zossrpbtdszdntgbqcfe.supabase.co';
+    const SB_KEY = 'sb_publishable_7vCBrHCs7cx3uVDDT_SHJA_HVlc1xt9';
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    // 2. ตั้งค่ารูปพื้นหลัง
+    const BUCKET_NAME = 'backgrounds';
+    let bgImages = [];
+    let currentBgIndex = 0;
+    let timerInterval;
+
+    // --- ฟังก์ชันจัดการรูปพื้นหลัง ---
+async function fetchBackgroundImages() {
+        const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).list();
+        if (data) {
+            bgImages = data.map(file => supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(file.name).data.publicUrl);
+            rotateBackground();
+        }
+    }
+
+function rotateBackground() {
+        const bgElement = document.getElementById('bg-image-default');
+        if (bgImages.length > 0) {
+            bgElement.style.opacity = 0;
+            setTimeout(() => {
+                bgElement.src = bgImages[currentBgIndex];
+                bgElement.style.opacity = 1;
+                currentBgIndex = (currentBgIndex + 1) % bgImages.length;
+            }, 1500);
+        }
+    }
+
+async function displayAd(ad) {
+    const mainImg = document.getElementById('ad-image');
+
+    // 1. เตรียมรูป (สั่งให้โหลดแต่ยังไม่นับเวลา)
+    mainImg.src = ad.image_url;
+
+    // 2. สร้าง Promise รอให้รูปโหลดเสร็จสมบูรณ์ 100%
+    await new Promise((resolve) => {
+        mainImg.onload = () => {
+            console.log("รูปโหลดเสร็จแล้ว เริ่มแสดงผลและนับเวลา");
+            resolve();
+        };
+        // กรณีรูปเสีย หรือโหลดไม่ขึ้น ให้ข้ามไปเลยหลังจาก 5 วินาที เพื่อไม่ให้ระบบค้าง
+        setTimeout(resolve, 5000); 
+    });
+
+    // 3. เมื่อรูปโหลดเสร็จแล้ว ค่อยสั่งโชว์รูป
+    mainImg.classList.remove('hidden');
+
+    // 4. เริ่มนับเวลาตามจริง (วินาทีจะเป๊ะขึ้น เพราะรูปมาตั้งรอแล้ว)
+    await new Promise(resolve => setTimeout(resolve, ad.duration_minutes * 1000));
+
+    // 5. จบการแสดงผล
+    mainImg.classList.add('hidden');
+    mainImg.src = ""; // ล้างค่าเดิมทิ้ง
+}
+
+    // --- ฟังก์ชันจัดการนาฬิกาถอยหลัง ---
+function startTimer(expiresAt) {
+        clearInterval(timerInterval);
+        const expireDate = new Date(expiresAt).getTime();
+
+        timerInterval = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = expireDate - now;
+
+            if (distance <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('ad-image').style.opacity = 0;
+                //document.getElementById('info-overlay').style.display = 'none';
+                document.getElementById('timer-container').style.opacity = "0";
+                updateQueue(); // ตรวจหาคิวถัดไปทันที
+            } else {
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                document.getElementById('time-left').innerText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            }
+        }, 1000);
+    }
+
+    // --- ฟังก์ชันหลักในการคุมคิว ---
+async function updateQueue() {
+        const nowIso = new Date().toISOString();
+
+        // 1. เช็คว่ามีโฆษณาที่กำลังฉายอยู่ไหม
+        const { data: currentAds } = await supabaseClient
+            .from('ads_display1')
+            .select('*')
+            .eq('status', 'paid')
+            .lte('started_at', nowIso)
+            .gt('expires_at', nowIso)
+            .limit(1);
+
+        if (currentAds && currentAds.length > 0) {
+            const ad = currentAds[0];
+            const imgElement = document.getElementById('ad-image');
+
+            // แสดงส่วนเวลานับถอยหลัง
+            document.getElementById('timer-container').style.opacity = "1";
+
+            if (imgElement.src !== ad.image_url) {
+            imgElement.src = ad.image_url;
+            imgElement.style.opacity = 1;
+            document.getElementById('ad-message').innerText = ad.message;
+            startTimer(ad.expires_at);
+            }
+        } else {
+            // 2. ถ้าไม่มีโฆษณาฉายอยู่ ให้เช็คว่ามีคิวใหม่ที่รอเริ่มไหม
+            checkAndStartNextQueue();
+        }
+
+        // 3. อัปเดตชื่อคิวถัดไป (UI เท่านั้น)
+        updateNextQueueLabel();
+    }
+
+async function checkAndStartNextQueue() {
+        const { data: nextInLine } = await supabaseClient
+            .from('ads_display1')
+            .select('*')
+            .eq('status', 'paid')
+            .is('started_at', null)
+            .order('created_at', { ascending: true })
+            .limit(1);
+
+        if (nextInLine && nextInLine.length > 0) {
+            const ad = nextInLine[0];
+            const durationSec = parseInt(ad.duration_minutes); // เราเปลี่ยนเป็นวินาทีแล้ว
+            const startTime = new Date();
+            const expireTime = new Date(startTime.getTime() + (durationSec * 1000));
+
+            // อัปเดต Database เพื่อเริ่มนับเวลา
+            await supabaseClient
+                .from('ads_display1')
+                .update({ 
+                    started_at: startTime.toISOString(), 
+                    expires_at: expireTime.toISOString() 
+                })
+                .eq('id', ad.id);
+
+            // แสดงผลทันทีโดยไม่ต้อง Refresh
+            updateQueue();
+        } else {
+        // --- จุดที่ต้องแก้คือตรงนี้ครับ ---
+        document.getElementById('ad-image').style.opacity = 0; 
+        
+        // มั่นใจว่าไม่ได้สั่ง .style.display = 'none' ให้กับ info-overlay
+        const overlay = document.getElementById('info-overlay');
+        overlay.style.display = 'flex'; // บังคับให้เป็น flex เสมอ
+        
+        document.getElementById('ad-message').innerText = "สแกน QR Code เพื่อส่งรูปขึ้นจอทีวีได้เลย!";
+        
+        document.getElementById('timer-container').style.opacity = "0"; // ซ่อนแค่ตัวเลขเวลา
+    }
+    }
+
+
+async function updateNextQueueLabel() {
+        const { data } = await supabaseClient
+            .from('ads_display1')
+            .select('message')
+            .eq('status', 'paid')
+            .is('started_at', null)
+            .order('created_at', { ascending: true })
+            .limit(1);
+        
+        document.getElementById('next-msg').innerText = (data && data.length > 0) ? data[0].message : "ว่าง";
+    }
+
+    // เริ่มทำงาน
+    fetchBackgroundImages();
+    setInterval(rotateBackground, 60000); // สลับพื้นหลังทุก 1 นาที
+    setInterval(updateQueue, 5000); // เช็คคิวใหม่จาก DB ทุก 5 วินาที
+    updateQueue();
+
+</script>
+</body>
+</html>
