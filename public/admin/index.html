@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - ตรวจสอบการชำระเงิน</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-gray-800">ระบบจัดการโฆษณา (Admin)</h1>
+            <button onclick="fetchWaitingList()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                รีเฟรชรายการ
+            </button>
+        </header>
+
+        <div id="waiting-list" class="grid grid-cols-1 gap-6">
+            <p class="text-gray-500 text-center py-10">กำลังโหลดรายการรอตรวจสอบ...</p>
+        </div>
+    </div>
+
+    <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4">
+        <img id="modal-img" src="" class="max-w-full max-h-full rounded-lg">
+        <button onclick="closeModal()" class="absolute top-5 right-5 text-white text-4xl">&times;</button>
+    </div>
+
+<script>
+    const SB_URL = 'https://zossrpbtdszdntgbqcfe.supabase.co';
+    const SB_KEY = 'sb_publishable_7vCBrHCs7cx3uVDDT_SHJA_HVlc1xt9';
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    // ดึงรายการที่รอตรวจสอบ (status = 'waiting_verify')
+    async function fetchWaitingList() {
+        const container = document.getElementById('waiting-list');
+        
+        const { data, error } = await supabaseClient
+            .from('ads_display1')
+            .select('*')
+            .eq('status', 'waiting_verify')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error(error);
+            return;
+        }
+
+        if (data.length === 0) {
+            container.innerHTML = `
+            <div class="bg-white p-10 rounded-xl shadow text-center text-gray-400">
+                ขณะนี้ไม่มีรายการรอตรวจสอบ...
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = data.map(item => `
+            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                <div class="flex flex-col md:flex-row">
+                    <div class="md:w-1/3 bg-gray-100 p-4 flex flex-col items-center">
+                        <span class="text-sm font-bold text-gray-400 mb-2 uppercase">รูปโฆษณา</span>
+                        <img src="${item.image_url}" class="h-48 w-full object-contain cursor-pointer rounded border" onclick="openModal('${item.image_url}')">
+                    </div>
+
+                    <div class="md:w-1/3 bg-yellow-50 p-4 flex flex-col items-center border-x border-gray-100">
+                        <span class="text-sm font-bold text-yellow-600 mb-2 uppercase">รูปสลิปโอนเงิน</span>
+                        ${item.slip_url ? 
+                            `<img src="${item.slip_url}" class="h-48 w-full object-contain cursor-pointer rounded border-2 border-yellow-200 shadow-sm" onclick="openModal('${item.slip_url}')">` : 
+                            `<div class="h-48 w-full flex items-center justify-center bg-gray-200 text-gray-400 rounded">ไม่มีรูปสลิป</div>`
+                        }
+                    </div>
+
+                    <div class="md:w-1/3 p-6 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800 mb-1">ข้อความ: ${item.message}</h3>
+                            <p class="text-sm text-gray-500">ระยะเวลา: ${item.duration_minutes} วินาที</p>
+                            <p class="text-xs text-gray-400 mt-2">ส่งเมื่อ: ${new Date(item.created_at).toLocaleString('th-TH')}</p>
+                        </div>
+                        
+                        <div class="mt-6 flex gap-3">
+                            <button onclick="approveAd('${item.id}')" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600 transition shadow-lg">
+                                อนุมัติ (Approve)
+                            </button>
+                            <button onclick="rejectAd('${item.id}')" class="flex-1 bg-red-100 text-red-600 py-3 rounded-lg font-bold hover:bg-red-200 transition">
+                                ปฏิเสธ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ฟังก์ชันอนุมัติ
+    async function approveAd(id) {
+        if (!confirm('ยืนยันการอนุมัติโฆษณานี้ใช่ไหม?')) return;
+
+        const { error } = await supabaseClient
+            .from('ads_display1')
+            .update({ status: 'paid' }) // เปลี่ยนสถานะเป็น paid เพื่อให้หน้าจอ TV ดึงไปแสดง
+            .eq('id', id);
+
+        if (!error) {
+            alert('อนุมัติโฆษณาเรียบร้อย!');
+            fetchWaitingList(); // โหลดรายการใหม่
+        }
+    }
+
+    // ฟังก์ชันปฏิเสธ
+    async function rejectAd(id) {
+        if (!confirm('ยืนยันการปฏิเสธโฆษณานี้ใช่ไหม?')) return;
+
+        const { error } = await supabaseClient
+            .from('ads_display1')
+            .update({ status: 'rejected' })
+            .eq('id', id);
+
+        if (!error) {
+            alert('ปฏิเสธโฆษณาแล้ว');
+            fetchWaitingList();
+        }
+    }
+
+    // Modal Logic
+    function openModal(url) {
+        document.getElementById('modal-img').src = url;
+        document.getElementById('image-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('image-modal').classList.add('hidden');
+    }
+
+    // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
+    // 1. โหลดข้อมูลครั้งแรกตอนเปิดหน้าเว็บ
+fetchWaitingList();
+
+// 2. ตั้งค่าให้ Supabase คอยแจ้งเตือนเมื่อมีการเปลี่ยนแปลงข้อมูลในตาราง ads_display
+const realtimeChannel = supabaseClient
+  .channel('public:ads_display1') // ตั้งชื่อ channel อะไรก็ได้
+  .on(
+    'postgres_changes', 
+    { event: '*', schema: 'public', table: 'ads_display1' }, 
+    (payload) => {
+      console.log('มีการเปลี่ยนแปลงข้อมูล!', payload);
+      // เมื่อมีการ Insert, Update หรือ Delete ให้สั่งโหลดรายการใหม่ทันที
+      fetchWaitingList();
+    }
+  )
+  .subscribe();
+</script>
+</body>
+</html>
