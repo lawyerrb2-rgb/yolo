@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ส่งรูปขึ้นจอ TV By M Group</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+            :root {
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+}
+
+   body {
+    font-family: 'Kanit', sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* จัดการกรอบด้านนอกให้รองรับ Banner แบบชิดขอบ */
+.container {
+    padding-top: 0; /* เอา padding บนออกเพื่อให้รูปชิดขอบ */
+    overflow: hidden; /* เพื่อให้รูป Banner ที่มุมโค้งไม่ทะลุออกมา */
+}
+
+/* สไตล์สำหรับ Banner ส่วนหัว */
+.header-banner {
+    width: calc(100% + 60px); /* ขยายให้ชิดขอบ padding ของ container */
+    margin-left: -30px;
+    margin-right: -30px;
+    height: 150px; /* ปรับความสูงตามต้องการ */
+    overflow: hidden;
+}
+
+#main-banner {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* ให้รูปเต็มกรอบโดยไม่เสียสัดส่วน */
+}
+
+/* สไตล์สำหรับโลโก้ */
+.logo-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: -40px; /* ให้โลโก้ลอยทับ Banner ขึ้นไปนิดนึง (ถ้าต้องการ) */
+    margin-bottom: 15px;
+}
+
+#my-logo {
+    width: 80px; /* ปรับขนาดโลโก้ */
+    height: 80px;
+    border-radius: 50%; /* ทำเป็นวงกลม */
+    border: 4px solid white; /* เพิ่มขอบขาวให้ดูเด่น */
+    background-color: white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    object-fit: contain;
+}
+
+/* ปรับ h2 ให้ระยะห่างพอดี */
+h2 {
+    margin-top: 10px;
+    font-size: 1.4rem;
+}
+
+.container {
+    width: 100%;
+    max-width: 450px;
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+h1 {
+    text-align: center;
+    color: #1f2937;
+    margin-bottom: 3px;
+    font-size: 1rem;
+}
+h2 {
+    text-align: center;
+    color: #1f2937;
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.hidden { display: none; }
+    </style>
+
+
+</head>
+<body class="p-4 md:p-8">
+<div class="container">
+    <div class="max-w-md mx-auto">
+        <div class="header-banner">
+            <img src="แบนเนอร์" alt="Banner" id="main-banner">
+        </div>
+        <div class="logo-wrapper">
+            <img src="โลโก้ร้าน" alt="Logo" id="my-logo">
+        </div>
+        <h1>ชื่อร้านของคุณ</h1>
+        <h2>🚀 ส่งรูป แจกวาป ขึ้นจอ</h2>
+
+        <div id="upload-section" class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
+            <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-3">1. เลือกรูปภาพ แนะนำไม่ควรเกิน 2 MB</label>
+                <label for="imageInput" class="relative flex flex-col items-center justify-center w-full h-44 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition overflow-hidden">
+    
+                    <div id="upload-placeholder" class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                        <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p class="text-sm text-gray-500 font-semibold">คลิกเพื่อเลือกรูป</p>
+                    </div>
+
+                    <img id="image-preview" src="" class="hidden absolute inset-0 w-full h-full object-cover">
+    
+                    <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="previewImage(this)">
+                </label>
+            </div>
+            
+<div class="mt-4 p-3 bg-red-50 rounded-lg border border-red-100">
+    <div class="flex gap-2">
+        <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <p class="text-[11px] text-red-600 leading-tight">
+            <strong>คำเตือน:</strong> ห้ามใช้ภาพโป๊, ภาพลิขสิทธิ์ หรือภาพที่ไม่เหมาะสม ระบบจะทำการตรวจสอบสลิปและเนื้อหาก่อนขึ้นจอ หากทำผิดกฎแอดมินขอไม่ดำเนินการโชว์รูปและไม่คืนเงิน
+        </p>
+    </div>
+</div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 font-medium mb-2">2. ข้อความสั้นๆ ใต้รูป</label>
+                <input type="text" id="messageInput" placeholder="จำกัด 60 ตัวอักษร" class="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition">
+            </div>
+
+            <div class="mb-8">
+                <label class="block text-gray-700 font-medium mb-3">3. เลือกแพ็กเกจเวลา</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="duration" value="30" data-price="35" class="peer hidden" checked onchange="updatePricePreview()">
+                        <div class="p-4 border-2 border-gray-100 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition shadow-sm">
+                            <div class="font-bold text-lg">30 วินาที</div>
+                            <div class="text-blue-600 font-semibold text-sm">35 บาท</div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="duration" value="40" data-price="45" class="peer hidden" onchange="updatePricePreview()">
+                        <div class="p-4 border-2 border-gray-100 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition shadow-sm">
+                            <div class="font-bold text-lg">40 วินาที</div>
+                            <div class="text-blue-600 font-semibold text-sm">45 บาท</div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="duration" value="50" data-price="55" class="peer hidden" checked onchange="updatePricePreview()">
+                        <div class="p-4 border-2 border-gray-100 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition shadow-sm">
+                            <div class="font-bold text-lg">50 วินาที</div>
+                            <div class="text-blue-600 font-semibold text-sm">55 บาท</div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="duration" value="60" data-price="65" class="peer hidden" checked onchange="updatePricePreview()">
+                        <div class="p-4 border-2 border-gray-100 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition shadow-sm">
+                            <div class="font-bold text-lg">60 วินาที</div>
+                            <div class="text-blue-600 font-semibold text-sm">65 บาท</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="startProcess()" id="btn-submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg">
+                ถัดไป: ชำระเงิน
+            </button>
+        </div>
+
+        <div id="payment-section" class="hidden bg-white p-6 rounded-2xl shadow-xl text-center border border-gray-100">
+            <h2 class="text-2xl font-bold mb-2 text-gray-800">ชำระเงิน</h2>
+            <p class="text-gray-500 mb-6 leading-relaxed">
+                แสดงผล <span id="display-duration" class="font-bold text-gray-800">30</span> วินาที <br>
+                ยอดชำระ <span id="display-price" class="text-red-600 font-extrabold text-2xl">20</span> บาท
+            </p>
+            
+            <div class="flex justify-center mb-6">
+                <div class="p-3 bg-white border-4 border-gray-50 rounded-2xl shadow-inner">
+                    <img id="qr-image" src="" class="w-52 h-52">
+                </div>
+            </div>
+        <div class="mt-4 p-3 bg-red-50 rounded-lg border border-red-100">
+            <div class="flex gap-2">
+                <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p class="text-[11px] text-red-600 leading-tight">
+                    <strong>คำเตือน:</strong> ระบบจะทำการตรวจสอบสลิปก่อนขึ้นจอ หากไม่มีการชำระเงินจริง ขอไม่ดำเนินการโชว์รูปและไม่คืนเงิน
+                 </p>
+            </div>
+        </div>
+            <div class="text-left mb-6">
+                <label for="slipInput" class="block w-full border-2 border-dashed border-gray-200 rounded-lg p-2 cursor-pointer hover:bg-gray-50">
+                    <img id="slip-preview" src="" class="hidden w-full h-32 object-contain mb-2">
+                    <div id="slip-text" class="text-xs text-gray-400 text-center py-4">คลิกเพื่อแนบสลิป</div>
+                    <input type="file" id="slipInput" accept="image/*" class="hidden" onchange="previewSlip(this)">
+                </label>
+            </div>
+
+            <button onclick="uploadSlip()" id="btn-confirm" class="w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-600 transition shadow-lg">
+                ยืนยันการส่งสลิป
+            </button>
+            <button onclick="location.reload()" class="mt-4 text-gray-400 text-sm hover:underline">ยกเลิกและเริ่มใหม่</button>
+        </div>
+
+    </div>
+</div>
+<script>
+    // --- 1. ตั้งค่า Supabase ---
+    const SB_URL = 'https://zossrpbtdszdntgbqcfe.supabase.co';
+    const SB_KEY = 'sb_publishable_7vCBrHCs7cx3uVDDT_SHJA_HVlc1xt9';
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    let currentAdId = null;
+
+    // --- 2. ฟังก์ชันอัปเดตราคา QR Code (ใช้เบอร์ของคุณ) ---
+function updatePricePreview() {
+        const selected = document.querySelector('input[name="duration"]:checked');
+        if (selected) {
+        const price = selected.getAttribute('data-price');
+        const duration = selected.value;
+        const myPhone = "0946912619"; // <--- แก้เป็นเบอร์พร้อมเพย์ของคุณที่นี่
+
+        // อัปเดตตัวเลขในหน้าจอ
+        document.getElementById('display-price').innerText = price;
+        document.getElementById('display-duration').innerText = duration;
+        // อัปเดต QR Code
+        document.getElementById('qr-image').src = `https://promptpay.io/${myPhone}/${price}.png`;
+    }
+}
+function previewImage(input) {
+    const preview = document.getElementById('image-preview');
+    const placeholder = document.getElementById('upload-placeholder');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            // ใส่ที่มาของรูปจากไฟล์ที่เลือก
+            preview.src = e.target.result;
+            // โชว์รูป และซ่อนไอคอนเดิม
+            preview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+    // เรียกครั้งแรกเพื่อตั้งค่า QR Code เริ่มต้น
+    updatePricePreview();
+
+    // --- 3. ฟังก์ชันเริ่มอัปเดตโฆษณา ---
+    async function startProcess() {
+        const file = document.getElementById('imageInput').files[0];
+        const message = document.getElementById('messageInput').value;
+        const selectedPackage = document.querySelector('input[name="duration"]:checked');
+        const duration = selectedPackage.value;
+        const btn = document.getElementById('btn-submit');
+
+        if (!file || !message) {
+            alert("กรุณาเลือกรูปภาพและใส่ข้อความให้ครบถ้วนครับ");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "กำลังอัปโหลดรูป...";
+
+        try {
+            // 3.1 อัปโหลดรูปโฆษณาไปที่ Bucket 'ads'
+            const fileName = `ad_${Date.now()}.png`;
+            const { data: upData, error: upErr } = await supabaseClient.storage.from('ads-images').upload(fileName, file);
+            if (upErr) throw upErr;
+
+            const { data: urlData } = supabaseClient.storage.from('ads-images').getPublicUrl(fileName);
+            const publicUrl = urlData.publicUrl;
+
+            // 3.2 บันทึกข้อมูลเข้าตาราง (สถานะเริ่มต้นเป็น pending)
+            const { data: insertData, error: insertErr } = await supabaseClient
+                .from('ads_display1')
+                .insert([{ 
+                    image_url: publicUrl, 
+                    message: message, 
+                    duration_minutes: duration, // บันทึกเป็นวินาที
+                    status: 'pending' 
+                }])
+                .select();
+
+            if (insertErr) throw insertErr;
+            currentAdId = insertData[0].id; // เก็บ ID ไว้ใช้อัปเดตสลิป
+            // เพิ่มบรรทัดนี้ลงไปเพื่อให้ตัวเลขในหน้าจ่ายเงินอัปเดตตามที่เลือกจริง
+            updatePricePreview();
+
+            // 3.3 สลับหน้าจอ
+            document.getElementById('upload-section').classList.add('hidden');
+            document.getElementById('payment-section').classList.remove('hidden');
+
+        } catch (err) {
+            alert("เกิดข้อผิดพลาด: " + err.message);
+            btn.disabled = false;
+            btn.innerText = "ถัดไป: ชำระเงิน";
+        }
+    }
+
+    //แสดงรูปสลิปเงิน
+    function previewSlip(input) {
+    const preview = document.getElementById('slip-preview');
+    const text = document.getElementById('slip-text');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('hidden');
+            text.innerText = "เปลี่ยนรูปสลิป";
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+    // --- 4. ฟังก์ชันอัปโหลดสลิปเงิน ---
+    async function uploadSlip() {
+        const file = document.getElementById('slipInput').files[0];
+        const btn = document.getElementById('btn-confirm');
+
+        // 1. ตรวจสอบว่ามีไฟล์สลิปหรือไม่
+        if (!file) {
+            // หากไม่มีไฟล์ ให้แสดงข้อความเตือนและหยุดการทำงานทันที
+            alert("กรุณาแนบสลิปโอนเงินก่อนยืนยันครับ");
+            return; // จบการทำงาน ไม่ส่งข้อมูลต่อ
+        }
+
+        // --- หากมีไฟล์สลิปแล้ว จะเริ่มทำขั้นตอนต่อไปนี้ ---
+        btn.disabled = true;
+        btn.innerText = "กำลังส่งสลิป...";
+
+        try {
+            // 4.1 อัปโหลดสลิปไปที่ Bucket 'slips'
+            const fileName = `slip_${Date.now()}_${currentAdId}.png`;
+            const { data: upData, error: upErr } = await supabaseClient.storage.from('slips').upload(fileName, file);
+            if (upErr) throw upErr;
+
+            const { data: urlData } = supabaseClient.storage.from('slips').getPublicUrl(fileName);
+
+            // 4.2 อัปเดตข้อมูลสถานะให้ Admin ตรวจสอบ
+            const { error: updateErr } = await supabaseClient
+                .from('ads_display1')
+                .update({ 
+                    slip_url: urlData.publicUrl, 
+                    status: 'waiting_verify' 
+                })
+                .eq('id', currentAdId);
+
+            if (updateErr) throw updateErr;
+
+            alert("ส่งสลิปเรียบร้อย! รอแอดมินตรวจสอบรูปภาพของคุณสักครู่นะครับ");
+            location.reload(); // รีเฟรชกลับหน้าแรกเพื่อรับงานใหม่
+
+        } catch (err) {
+            alert("เกิดข้อผิดพลาด: " + err.message);
+            btn.disabled = false;
+            btn.innerText = "ยืนยันการส่งสลิป";
+        }
+    }
+</script>
+</body>
+</html>
